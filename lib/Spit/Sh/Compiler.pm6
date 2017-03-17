@@ -272,8 +272,8 @@ method try-case($if is copy) {
     my $i = 0;
     while $if and $can {
         my ($topic,$pattern);
-        if $if ~~ SAST::Block {
-            @res.append: "\n$*pad  *) ", |self.node($if,:inline,:one-line),';;';
+        if $if !~~ SAST::If {
+            @res.append: "\n$*pad  *) ", |self.compile-in-ctx($if,:inline,:one-line),';;';
             $if = Nil;
         } elsif (
             (my \cond = $if.cond) ~~ SAST::Cmp && cond.sym eq 'eq'
@@ -701,7 +701,7 @@ multi method arg(SAST::Negative:D $_) {
 
 multi method arg(SAST::Block:D $_) {
     if .one-stmt -> $return {
-        self.arg($return.val);
+        self.arg($return);
     } else {
         cs self.node($_,:one-line);
     }

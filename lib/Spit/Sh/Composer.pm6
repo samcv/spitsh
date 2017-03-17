@@ -72,8 +72,8 @@ multi method walk(SAST::ClassDeclaration:D $THIS is rw) {
 multi method walk(SAST::Block:D $THIS is rw) {
     if $THIS.children == 0 || $THIS.children.all ~~ SAST::Nop {
         $THIS .= stage3-node(SAST::Nop);
-    } elsif $THIS.children === 1 {
-
+    } elsif $THIS.one-stmt -> $one-stmt {
+        $THIS = $one-stmt;
     }
 }
 
@@ -432,7 +432,7 @@ multi  method walk(SAST::Call:D $THIS is rw, $accept = True) {
     if $THIS.declaration.chosen-block -> $block {
         if $block ~~ SAST::Block and not $block.ann<cant-inline> {
             # only inline routines with one child for now
-            if $block.children == 1  && ($block.returns.?val || $block.last-stmt) <-> $last-stmt {
+            if $block.one-stmt <-> $last-stmt {
                 if self.inline-call($THIS,$last-stmt) -> $replacement {
                     if $replacement ~~ $accept {
                         $THIS = $replacement;

@@ -241,8 +241,6 @@ role SAST::OSMutant {
     method mutate-for-os($os) {...}
 }
 
-subset Blockish of SAST where SAST::Block|SAST::Nop;
-
 class SAST::Children does SAST {
 
     method children { Empty }
@@ -304,7 +302,7 @@ class SAST::MutableChildren  is SAST::Children {
 }
 
 class SAST::CompUnit is SAST::Children {
-    has Blockish:D $.block is required is rw;
+    has SAST:D $.block is required is rw;
     has $.depends-on is rw; # A Spit::DependencyList
     has @.phasers;
     has @.exported;
@@ -424,6 +422,7 @@ class SAST::MaybeReplace is SAST::VarDecl {
     method replace-with {
         given $.assign {
             when *.compile-time.defined { $_ }
+            when { .compile-time ~~ Spit::Type } { $_ }
             when SAST::Var|SAST::Param|SAST::Invocant { $_ }
             default { Nil }
         }
@@ -498,8 +497,13 @@ class SAST::Block is SAST::MutableChildren does SAST::Dependable {
          @.children.reverse.first({ $_ !~~ SAST::PhaserBlock });
     }
 
-    method one-stmt {
-        @.children[0] if @.children == 1;
+    method one-stmt is rw {
+        if @.children.grep({$_ !~~ SAST::PhaserBlock}) == 1 {
+            given self.last-stmt {
+                when SAST::Return { .val }
+                default { $_ }
+            }
+        }
     }
 
     method type {
@@ -955,7 +959,7 @@ class SAST::Signature is SAST::Children {
 
 class SAST::ClassDeclaration does SAST::Declarable is SAST::Children {
     has Spit::Type $.class is required;
-    has Blockish $.block is rw;
+    has SAST $.block is rw;
 
     method symbol-type { CLASS }
     method name { self.class.^name }
@@ -1260,7 +1264,7 @@ sub generate-topic-var(:$var! is rw,:$cond! is rw,:@blocks!) {
 
 class SAST::If is SAST::Children is rw {
     has SAST:D $.cond is required is rw;
-    has Blockish $.then is rw;
+    has SAST $.then is rw;
     has SAST $.else is rw;
     has SAST::VarDecl $.topic-var;
     has $.when;
@@ -1284,7 +1288,7 @@ class SAST::If is SAST::Children is rw {
 
 class SAST::While is SAST::Children {
     has SAST:D $.cond is required is rw;
-    has Blockish $.block is rw;
+    has SAST $.block is rw;
     has $.until;
     has SAST::VarDecl $.topic-var;
 
@@ -1300,7 +1304,7 @@ class SAST::While is SAST::Children {
 
 class SAST::Given is SAST::Children is rw {
     has SAST:D $.given is required;
-    has Blockish:D $.block is required;
+    has SAST:D $.block is required;
     has SAST::VarDecl $.topic-var;
 
     method stage2($ctx) {
@@ -1317,7 +1321,7 @@ class SAST::Given is SAST::Children is rw {
 }
 
 class SAST::For is SAST::Children {
-    has Blockish $.block is rw;
+    has SAST $.block is rw;
     has SAST:D $.list is required;
     has SAST::VarDecl $.iter-var;
 
@@ -1540,7 +1544,7 @@ class SAST::FileContent is SAST::Children {
 }
 
 class SAST::Quietly is SAST::Children {
-    has Blockish:D $.block is required;
+    has SAST:D $.block is required;
     has SAST $.null is rw;
 
     method stage2($ctx) {
